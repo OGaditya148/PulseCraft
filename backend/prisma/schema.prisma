@@ -1,0 +1,108 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  PROJECT_MANAGER
+  DEVELOPER
+}
+
+enum Status {
+  TO_DO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model User {
+  id               String         @id @default(uuid())
+  email            String         @unique
+  password         String
+  name             String
+  role             Role           @default(DEVELOPER)
+  refreshToken     String?
+  createdProjects  Project[]      @relation("CreatedByPM")
+  assignedTasks    Task[]         @relation("AssignedDeveloper")
+  activityLogs     ActivityLog[]
+  notifications    Notification[]
+  createdAt        DateTime       @default(now())
+}
+
+model Client {
+  id        String    @id @default(uuid())
+  name      String
+  email     String
+  projects  Project[]
+}
+
+model Project {
+  id          String        @id @default(uuid())
+  title       String
+  description String?
+  clientId    String
+  client      Client        @relation(fields: [clientId], references: [id])
+  createdById String
+  createdBy   User          @relation("CreatedByPM", fields: [createdById], references: [id])
+  tasks       Task[]
+  activities  ActivityLog[]
+  createdAt   DateTime      @default(now())
+}
+
+model Task {
+  id          String        @id @default(uuid())
+  title       String
+  description String?
+  status      Status        @default(TO_DO)
+  priority    Priority      @default(MEDIUM)
+  dueDate     DateTime
+  isOverdue   Boolean       @default(false)
+  projectId   String
+  project     Project       @relation(fields: [projectId], references: [id])
+  developerId String?
+  developer   User?         @relation("AssignedDeveloper", fields: [developerId], references: [id])
+  activities  ActivityLog[]
+  createdAt   DateTime      @default(now())
+
+  @@index([projectId])
+  @@index([developerId])
+  @@index([status])
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  message   String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id])
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+  @@index([taskId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
